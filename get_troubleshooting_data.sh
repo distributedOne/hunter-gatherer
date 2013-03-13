@@ -9,7 +9,7 @@ mkdir -p ${result_path};
 rm -rf ${result_path}/*
 
 PS3="What type of problem are you having? "
-options="general monitor object_storage_daemon meta_data_server placement_groups exit"
+options="general monitor object_storage_daemon meta_data_server placement_groups radosgw exit"
 
 function dump_data {
   command=$1
@@ -22,6 +22,13 @@ function dump_data {
 function dump_osdmap {
   echo "Command: ceph osd getmap -o ./troubleshooting_data/osd_map"
   ceph osd getmap -o ./troubleshooting_data/osd_map
+}
+
+function dump_radosgw_log {
+  if [[ -f '/var/log/ceph/radosgw.log' ]]; then
+    echo "Command: cp /var/log/ceph/radosgw.log ${result_path}/radosgw.log";
+    cp "/var/log/ceph/radosgw.log" "${result_path}/radosgw.log";
+  fi
 }
 
 function build_archive {
@@ -103,6 +110,23 @@ do
       upload_archive
       break
       ;;
+    "radosgw")
+      echo "You selected rados gateway problems.";
+      echo ""
+      echo "We are now dumping copies of the following items to: ${result_path}";
+      echo ""
+      dump_data "ceph status"
+      dump_data "ceph auth list"
+      dump_data "ceph pg dump"
+      dump_data "ceph osd tree"
+      dump_data "radosgw-admin usage show --show-log-entries=false"
+      dump_data "dmesg"
+      dump_osdmap
+      dump_radosgw_log
+      build_archive
+      upload_archive
+      break
+      ;;
     "general")
       echo "You selected general problems.";
       echo ""
@@ -117,8 +141,10 @@ do
       dump_data "ceph osd tree"
       dump_data "ceph quorum_status"
       dump_data "rbd list"
+      dump_data "radosgw-admin usage show --show-log-entries=false"
       dump_data "dmesg"
       dump_osdmap
+      dump_radosgw_log
       build_archive
       upload_archive
       break
